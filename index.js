@@ -49,6 +49,15 @@ async function run() {
                 next()
             })
         }
+        const verifyAdmin = async (req, res, next) => {
+            const email = req.decoded.email;
+            const query = { email: email }
+            const user = await userCollection.findOne(query)
+            if (user?.role !== "admin") {
+                return res.status(403).send({ error: true, message: 'Forbidden Message' })
+            }
+            next()
+        }
 
         app.post('/jwt', (req, res) => {
             const user = req.body;
@@ -61,12 +70,23 @@ async function run() {
             const result = await reviewCollection.find().toArray();
             res.send(result)
         })
-
+        //Menu information & Collection
         app.get('/menu', async (req, res) => {
             const result = await cafeCollection.find().toArray();
             res.send(result)
         })
-
+        app.post('/menu', verifyJWT, verifyAdmin, async (req, res) => {
+            const newItem = req.body;
+            console.log(newItem);
+            const result = await cafeCollection.insertOne(newItem)
+            res.send(result)
+        })
+        app.delete('/menu/:id', verifyJWT, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await cafeCollection.deleteOne(query)
+            res.send(result)
+        })
         //Cart Information And Collection:
         app.get("/carts", verifyJWT, async (req, res) => {
             const email = req.query.email;
@@ -95,7 +115,7 @@ async function run() {
         })
 
         //user information collection 
-        app.get('/users', async (req, res) => {
+        app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
             const result = await userCollection.find().toArray();
             res.send(result)
         })
@@ -117,7 +137,7 @@ async function run() {
                 res.send({ admin: false })
             }
             const query = { email: email }
-            const user = await usersCollection.findOne(query);
+            const user = await userCollection.findOne(query);
             const result = { admin: user?.role === 'admin' }
             res.send(result);
 
